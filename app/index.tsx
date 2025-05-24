@@ -34,6 +34,18 @@ export default function Home() {
             </Text>
           </Pressable>
         </Link>
+                <Link href={"/scanner/GenerateQRScreen"} asChild>
+          <Pressable disabled={!isPermissionGranted}>
+            <Text
+              style={[
+                styles.buttonStyle,
+                { opacity: !isPermissionGranted ? 0.5 : 1 },
+              ]}
+            >
+              Generate QR Code
+            </Text>
+          </Pressable>
+        </Link>
       </View>
     </SafeAreaView>
   );
