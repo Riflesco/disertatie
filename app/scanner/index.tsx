@@ -73,6 +73,8 @@ export default function Home() {
 
             if (type === "Link") {
               warnings = await isSuspiciousUrl(data);
+            } else if (type === "WiFi") {
+              warnings = checkWifiQrSecurity(data);
             }
 
             const now = new Date();
@@ -86,7 +88,7 @@ export default function Home() {
             });
 
             if (warnings.length > 0) {
-              Alert.alert("🚨 Link suspect detectat!", warnings.join("\n\n"), [
+              Alert.alert("🚨 Conținut suspect detectat!", warnings.join("\n\n"), [
                 {
                   text: "Anulează",
                   style: "cancel",
@@ -95,11 +97,21 @@ export default function Home() {
                 {
                   text: "Continuă oricum",
                   style: "destructive",
-                  onPress: () => Linking.openURL(data),
+                  onPress: () => {
+                    if (type === "Link") {
+                      Linking.openURL(data);
+                    } else {
+                      Alert.alert("ℹ️ QR Wi-Fi detectat", "Conectarea se face manual.");
+                    }
+                  },
                 },
               ]);
             } else {
-              Linking.openURL(data);
+              if (type === "Link") {
+                Linking.openURL(data);
+              } else {
+                Alert.alert("ℹ️ QR Wi-Fi detectat", "Nu au fost găsite probleme.");
+              }
             }
           }
         }}
@@ -193,4 +205,40 @@ const expandUrl = async (shortUrl: string): Promise<string | null> => {
   } catch {
     return null;
   }
+};
+
+const checkWifiQrSecurity = (data: string): string[] => {
+  const warnings: string[] = [];
+
+  const ssidMatch = data.match(/S:([^;]*)/);
+  const passwordMatch = data.match(/P:([^;]*)/);
+  const encryptionMatch = data.match(/T:([^;]*)/);
+
+  const ssid = ssidMatch?.[1] || "";
+  const password = passwordMatch?.[1] || "";
+  const encryption = encryptionMatch?.[1] || "";
+
+  if (encryption.toLowerCase() === "nopass") {
+    warnings.push("⚠️ Rețea fără parolă – conexiunile sunt nesecurizate.");
+  }
+
+  if (password.length > 0 && password.length < 8) {
+    warnings.push("⚠️ Parolă Wi-Fi foarte scurtă – nesigură.");
+  }
+
+  if (["12345678", "password", "admin123"].includes(password.toLowerCase())) {
+    warnings.push("⚠️ Parolă comună sau slabă – ușor de ghicit.");
+  }
+
+  if (/free|gratis|liber/i.test(ssid)) {
+    warnings.push(`⚠️ Numele rețelei („${ssid}”) sugerează acces gratuit – verifică autenticitatea.`);
+  }
+
+  if (ssid.length === 0) {
+    warnings.push("⚠️ SSID lipsă – codul poate fi malformat.");
+  }
+  if (/https?:\/\//i.test(data)) {
+  warnings.push("⚠️ Codul QR Wi-Fi conține și un link – poate fi un atac mascat.");
+  }
+  return warnings;
 };
